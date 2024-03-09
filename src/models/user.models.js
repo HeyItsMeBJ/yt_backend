@@ -64,7 +64,7 @@ userSchema.pre("save", async function (next) {
 
 
 //making methods for check the password is correct input by user, this is done by adding the ispasswordcorrect property in the methods
-userSchema.methods.isPasswordCorrect = async (inputPass) => {
+userSchema.methods.isPasswordCorrect = async function(inputPass) {
   return await bcrypt.compare(inputPass, this.password);
 };
 
