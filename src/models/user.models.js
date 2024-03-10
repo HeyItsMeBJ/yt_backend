@@ -52,8 +52,6 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-
-
 // making the pre middleware for encripting the user input password as user input password we save the password to the db then pre in excecute just before saving and perform tasks
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
@@ -61,13 +59,10 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-
-
 //making methods for check the password is correct input by user, this is done by adding the ispasswordcorrect property in the methods
-userSchema.methods.isPasswordCorrect = async function(inputPass) {
+userSchema.methods.isPasswordCorrect = async function (inputPass) {
   return await bcrypt.compare(inputPass, this.password);
 };
-
 
 // use this cryptography techs for generating the access and refresh token
 userSchema.methods.genAccessToken = function () {
@@ -85,15 +80,15 @@ userSchema.methods.genAccessToken = function () {
   );
 };
 userSchema.methods.genRefreshToken = function () {
-    return jwt.sign(
-      {
-        _id: this._id
-      },
-      process.env.REFRESH_TOKEN_PRIVATE,
-      {
-        expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
-      }
-    );
-  };
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    process.env.REFRESH_TOKEN_PRIVATE,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+    }
+  );
+};
 
 export const User = mongoose.model("User", userSchema);
