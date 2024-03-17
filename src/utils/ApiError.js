@@ -4,7 +4,7 @@ class ApiError extends Error {
     statusCode,
     error = [],
     stack
-  ) {
+  ) { 
     super(message);
     this.statusCode = statusCode || 500;
     this.errors = error;
@@ -20,3 +20,4 @@ class ApiError extends Error {
   }
 }
 
+export {ApiError}

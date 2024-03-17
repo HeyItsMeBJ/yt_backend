@@ -55,9 +55,10 @@ const userSchema = new Schema(
 // making the pre middleware for encripting the user input password as user input password we save the password to the db then pre in excecute just before saving and perform tasks
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
-  await bcrypt.hash(this.password, 10);
+ this.password= await bcrypt.hash(this.password, 10);
   next();
 });
+
 
 //making methods for check the password is correct input by user, this is done by adding the ispasswordcorrect property in the methods
 userSchema.methods.isPasswordCorrect = async function (inputPass) {
