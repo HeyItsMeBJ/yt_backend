@@ -148,36 +148,44 @@ const logout = asyncHandler(async (req, res, next) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  // get refresh token from cookies or body
-  const token = req.cookies?.refreshToken || req.body?.refreshToken;
-  if (!token) throw new ApiError(400, "No Token Provided");
+  try {
+    // get refresh token from cookies or body
+    const token = req.cookies?.refreshToken || req.body?.refreshToken;
+    if (!token) throw new ApiError(400, "No Token Provided");
 
-  //verify refresh token
-  const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_PRIVATE);
-  if (!decodedToken) throw new ApiError(400, "Invalid Token");
+    //verify refresh token
+    const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_PRIVATE);
+    if (!decodedToken) throw new ApiError(400, "Invalid Token");
 
-  //find user
-  const userdata = await User.findById(decodedToken?._id);
-  if (!userdata) throw new ApiError(404, "User Not Found");
+    //find user
+    const userdata = await User.findById(decodedToken?._id);
+    if (!userdata) throw new ApiError(404, "User Not Found");
 
-  // check token is same in db or not
-  if (userdata.refreshToken !== token) throw new ApiError(400, "Invalid Token");
+    // check token is same in db or not
+    if (userdata.refreshToken !== token)
+      throw new ApiError(400, "Invalid Token");
 
-  //gen new tokens
-  const accessToken = await userdata.genAccessToken();
-  const refreshToken = await userdata.genRefreshToken();
-  userdata.refreshToken = refreshToken;
-  const updatedUserdata = await userdata
-    .save()
-    .select("-password -refreshToken");
+    //gen new tokens
+    const accessToken = await userdata.genAccessToken();
+    const refreshToken = await userdata.genRefreshToken();
+    userdata.refreshToken = refreshToken;
+    await userdata.save({ validateBeforeSave: false });
 
-  // set new updated cookie
-  const cookieOpt = { httpOnly: true, secure: true };
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, cookieOpt)
-    .cookie("refreshToken", refreshToken, cookieOpt)
-    .json(new ApiRes(200, "new access genterated", updatedUserdata));
+    const updatedUserdata = await User.findOne({
+      username: userdata.username,
+    }).select("-password -refreshToken");
+    if (!updatedUserdata) throw new ApiError(500, "Server Error");
+    // console.log(updatedUserdata)
+    // set new updated cookie
+    const cookieOpt = { httpOnly: true, secure: true };
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, cookieOpt)
+      .cookie("refreshToken", refreshToken, cookieOpt)
+      .json(new ApiRes(200, "new access genterated", updatedUserdata));
+  } catch (error) {
+    throw new ApiError(400, error);
+  }
 });
 
 export { register, login, logout, refreshAccessToken };
