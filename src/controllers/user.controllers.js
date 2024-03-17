@@ -4,11 +4,12 @@ import { ApiError } from "../utils/ApiError.js";
 import uploadCloudinaryFile from "../utils/cloudinary.js";
 import { ApiRes } from "../utils/ApiRes.js";
 import fs from "fs";
+import jwt from "jsonwebtoken";
 
 const register = asyncHandler(async (req, res, next) => {
   // taking all input fields from frontend
   const { username, email, fullname, password, refreshToken } = req.body;
-    console.log(req.body);
+  console.log(req.body);
   // check all imp input fields
   if (!username || !email || !fullname || !password) {
     throw new ApiError("Some fields are empty .. ", 400);
@@ -74,7 +75,7 @@ const register = asyncHandler(async (req, res, next) => {
 const login = asyncHandler(async (req, res, next) => {
   //get user input frontend
   const { username, email, password } = req.body;
-  if (!username && !email )
+  if (!username && !email)
     throw new ApiError("error : All fields are required.", 400);
 
   //get user from db
@@ -130,7 +131,7 @@ const logout = asyncHandler(async (req, res, next) => {
     userdata._id,
     {
       $set: {
-        refreshToken: '',
+        refreshToken: "",
       },
     },
     { new: true }
@@ -146,8 +147,37 @@ const logout = asyncHandler(async (req, res, next) => {
     .json(new ApiRes(200, "LoggedOut", {}));
 });
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  // get refresh token from cookies or body
+  const token = req.cookies?.refreshToken || req.body?.refreshToken;
+  if (!token) throw new ApiError(400, "No Token Provided");
 
+  //verify refresh token
+  const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_PRIVATE);
+  if (!decodedToken) throw new ApiError(400, "Invalid Token");
 
+  //find user
+  const userdata = await User.findById(decodedToken?._id);
+  if (!userdata) throw new ApiError(404, "User Not Found");
 
+  // check token is same in db or not
+  if (userdata.refreshToken !== token) throw new ApiError(400, "Invalid Token");
 
-export { register, login, logout };
+  //gen new tokens
+  const accessToken = await userdata.genAccessToken();
+  const refreshToken = await userdata.genRefreshToken();
+  userdata.refreshToken = refreshToken;
+  const updatedUserdata = await userdata
+    .save()
+    .select("-password -refreshToken");
+
+  // set new updated cookie
+  const cookieOpt = { httpOnly: true, secure: true };
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOpt)
+    .cookie("refreshToken", refreshToken, cookieOpt)
+    .json(new ApiRes(200, "new access genterated", updatedUserdata));
+});
+
+export { register, login, logout, refreshAccessToken };
