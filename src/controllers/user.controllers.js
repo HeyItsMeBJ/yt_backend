@@ -82,7 +82,7 @@ const login = asyncHandler(async (req, res, next) => {
   const userdata = await User.findOne({
     $or: [{ username: username }, { email: email }],
   });
-  console.log(userdata);
+  // console.log(userdata);
 
   //check user exist or not
   if (!userdata) throw new ApiError("error : user not found", 400);
@@ -103,7 +103,7 @@ const login = asyncHandler(async (req, res, next) => {
     { $set: { refreshToken: refreshToken } },
     { new: true }
   ).select("-password -refreshToken");
-  console.log(updatedUserdata);
+  // console.log(updatedUserdata);
   if (!updatedUserdata) throw new ApiError("error : server error", 500);
 
   // send cookies & data
