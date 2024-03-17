@@ -74,7 +74,6 @@ const register = asyncHandler(async (req, res, next) => {
 const login = asyncHandler(async (req, res, next) => {
   //get user input frontend
   const { username, email, password } = req.body;
-  console.log(req.body)
   if (!username && !email )
     throw new ApiError("error : All fields are required.", 400);
 
@@ -131,7 +130,7 @@ const logout = asyncHandler(async (req, res, next) => {
     userdata._id,
     {
       $set: {
-        refreshToken: undefined,
+        refreshToken: '',
       },
     },
     { new: true }
@@ -146,5 +145,9 @@ const logout = asyncHandler(async (req, res, next) => {
     .clearCookie("refreshToken", cookieOpt)
     .json(new ApiRes(200, "LoggedOut", {}));
 });
+
+
+
+
 
 export { register, login, logout };
