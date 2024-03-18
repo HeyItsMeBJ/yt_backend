@@ -184,8 +184,116 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       .cookie("refreshToken", refreshToken, cookieOpt)
       .json(new ApiRes(200, "new access genterated", updatedUserdata));
   } catch (error) {
-    throw new ApiError(400, error);
+    throw new ApiError(400, error?.message || "invalid tokens");
   }
 });
 
-export { register, login, logout, refreshAccessToken };
+const updatePassword = asyncHandler(async (req, res, next) => {
+  // take old new pass
+  const { oldPassword, newPassword } = req.body;
+  if (!oldPassword || !newPassword)
+    throw new ApiError(400, "please provide all fields");
+
+  // find the user and check password
+  const user = await User.findById(req.user._id);
+  if (!user) throw new ApiError(500, "server error");
+  const isMatched = await user.isPasswordCorrect(oldPassword);
+  if (!isMatched) throw new ApiError(401, "Wrong Password");
+
+  // update pass
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  //res
+  return res.status(200).json(new ApiRes(200, "Password Updated", {}));
+});
+
+const getCurrentUserdata = asyncHandler(async (req, res, next) => {
+  return res.status(200).json(new ApiRes(200, "fetched", req.user));
+});
+
+const updateAccountData = asyncHandler(async (req, res, next) => {
+  //get input data
+  const { fullname, email } = req.body;
+  if (!fullname && !email)
+    throw new ApiError(400, "Please provide at least one field to update");
+
+  //update data in DB
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { fullname, email } },
+    { new: true }
+  ).select("-password -refreshToken");
+  if (!user) throw new ApiError(500, "Server Error");
+
+  //res updated data
+  return res.status(200).json(new ApiRes(200, "Updated", user));
+});
+
+const updateAvatar = asyncHandler(async (req, res, next) => {
+  // get avatar
+  const avatar = req.file;
+  if (!avatar) throw new ApiError(400, "Input the avatar");
+
+  // get local path
+  const avatarpath = avatar[0].path;
+  if (!avatarpath) throw new ApiError(400, "input the avatar");
+
+  // upload on cloudinary
+  const uploadAvatar = await uploadCloudinaryFile(avatarpath);
+  if (!uploadAvatar) throw new ApiError(500, "server error: upload problem");
+
+  // get user and update avatar url on db
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { avatar: uploadAvatar.url } },
+    { new: true }
+  ).select("-password -refreshToken");
+  if (!user) {
+    fs.unlinkSync(avatarpath);
+    throw new ApiError(500, "Server Error: User not get");
+  }
+
+  // res 
+  return res.status(200).json(new ApiRes(200, "avatar updated", user));
+});
+
+const updateCoverImage = asyncHandler(async (req, res, next) => {
+  // get coverImage
+  const coverImage = req.file;
+  if (!coverImage) throw new ApiError(400, "Input the coverImage");
+
+  // get local path
+  const coverImagepath = coverImage[0].path;
+  if (!coverImagepath) throw new ApiError(400, "input the coverImage");
+
+  // upload on cloudinary
+  const uploadCoverImage = await uploadCloudinaryFile(coverImagepath);
+  if (!uploadCoverImage) throw new ApiError(500, "server error: upload problem");
+
+  // get user and update coverImage url on db
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    { $set: { coverImage: uploadAvatar.url } },
+    { new: true }
+  ).select("-password -refreshToken");
+  if (!user) {
+    fs.unlinkSync(coverImagepath);
+    throw new ApiError(500, "Server Error: User not get");
+  }
+
+  // res 
+  return res.status(200).json(new ApiRes(200, "coverImage updated", user));
+});
+
+export {
+  register,
+  login,
+  logout,
+  refreshAccessToken,
+  updatePassword,
+  getCurrentUserdata,
+  updateAccountData,
+  updateAvatar,
+  updateCoverImage
+};
