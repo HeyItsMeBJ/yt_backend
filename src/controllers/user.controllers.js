@@ -5,11 +5,12 @@ import uploadCloudinaryFile from "../utils/cloudinary.js";
 import { ApiRes } from "../utils/ApiRes.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const register = asyncHandler(async (req, res, next) => {
   // taking all input fields from frontend
   const { username, email, fullname, password, refreshToken } = req.body;
-  console.log(req.body);
+  // console.log(req.body);
   // check all imp input fields
   if (!username || !email || !fullname || !password) {
     throw new ApiError("Some fields are empty .. ", 400);
@@ -76,7 +77,7 @@ const login = asyncHandler(async (req, res, next) => {
   //get user input frontend
   const { username, email, password } = req.body;
   if (!username && !email)
-    throw new ApiError("error : All fields are required.", 400);
+    throw new ApiError("All fields are required.", 400);
 
   //get user from db
   const userdata = await User.findOne({
@@ -192,13 +193,13 @@ const updatePassword = asyncHandler(async (req, res, next) => {
   // take old new pass
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword)
-    throw new ApiError(400, "please provide all fields");
+    throw new ApiError("please provide all fields",400);
 
   // find the user and check password
   const user = await User.findById(req.user._id);
-  if (!user) throw new ApiError(500, "server error");
+  if (!user) throw new ApiError( "server error",500);
   const isMatched = await user.isPasswordCorrect(oldPassword);
-  if (!isMatched) throw new ApiError(401, "Wrong Password");
+  if (!isMatched) throw new ApiError("Wrong Password",401);
 
   // update pass
   user.password = newPassword;
@@ -216,7 +217,7 @@ const updateAccountData = asyncHandler(async (req, res, next) => {
   //get input data
   const { fullname, email } = req.body;
   if (!fullname && !email)
-    throw new ApiError(400, "Please provide at least one field to update");
+    throw new ApiError("Please provide at least one field to update",400);
 
   //update data in DB
   const user = await User.findByIdAndUpdate(
@@ -233,15 +234,16 @@ const updateAccountData = asyncHandler(async (req, res, next) => {
 const updateAvatar = asyncHandler(async (req, res, next) => {
   // get avatar
   const avatar = req.file;
-  if (!avatar) throw new ApiError(400, "Input the avatar");
+  
+  if (!avatar) throw new ApiError("Input the avatar",400);
 
   // get local path
-  const avatarpath = avatar[0].path;
-  if (!avatarpath) throw new ApiError(400, "input the avatar");
-
+  const avatarpath = avatar.path;
+  if (!avatarpath) throw new ApiError("input the avatar",400);
+// console.log(avatarpath)
   // upload on cloudinary
   const uploadAvatar = await uploadCloudinaryFile(avatarpath);
-  if (!uploadAvatar) throw new ApiError(500, "server error: upload problem");
+  if (!uploadAvatar) throw new ApiError( "server error: upload problem",500);
 
   // get user and update avatar url on db
   const user = await User.findByIdAndUpdate(
@@ -251,39 +253,149 @@ const updateAvatar = asyncHandler(async (req, res, next) => {
   ).select("-password -refreshToken");
   if (!user) {
     fs.unlinkSync(avatarpath);
-    throw new ApiError(500, "Server Error: User not get");
+    throw new ApiError("Server Error: User not get",500);
   }
 
-  // res 
+  // res
   return res.status(200).json(new ApiRes(200, "avatar updated", user));
 });
 
 const updateCoverImage = asyncHandler(async (req, res, next) => {
   // get coverImage
   const coverImage = req.file;
-  if (!coverImage) throw new ApiError(400, "Input the coverImage");
+  if (!coverImage) throw new ApiError( "Input the coverImage",400);
 
   // get local path
-  const coverImagepath = coverImage[0].path;
-  if (!coverImagepath) throw new ApiError(400, "input the coverImage");
+  const coverImagepath = coverImage.path;
+  if (!coverImagepath) throw new ApiError( "input the coverImage",400);
 
   // upload on cloudinary
   const uploadCoverImage = await uploadCloudinaryFile(coverImagepath);
-  if (!uploadCoverImage) throw new ApiError(500, "server error: upload problem");
+  if (!uploadCoverImage)
+    throw new ApiError( "server error: upload problem",500);
 
   // get user and update coverImage url on db
   const user = await User.findByIdAndUpdate(
     req.user?._id,
-    { $set: { coverImage: uploadAvatar.url } },
+    { $set: { coverImage: updateCoverImage.url } },
     { new: true }
   ).select("-password -refreshToken");
   if (!user) {
     fs.unlinkSync(coverImagepath);
-    throw new ApiError(500, "Server Error: User not get");
+    throw new ApiError( "Server Error: User not get",500);
   }
 
-  // res 
+  // res
   return res.status(200).json(new ApiRes(200, "coverImage updated", user));
+});
+
+const getUserChannelDetails = asyncHandler(async (req, res, next) => {
+  const { username } = req.params;
+ 
+  if (!username) throw new ApiError("Please provide username", 400);
+
+  const channel = await User.aggregate([
+    { $match: { username: username?.toLowerCase() } },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      $addFields: {
+        subscribersCount: { $size: "$subscribers" },
+        subscribedToCount: { $size: "$subscribedTo" },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        isSubscribed: 1,
+        subscribedToCount: 1,
+        subscribersCount: 1,
+        username: 1,
+        email: 1,
+        fullname: 1,
+        avatar: 1,
+        coverImage: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.length) throw new ApiError("Channel Not Found", 400);
+
+  return res.status(200).json(new ApiRes(200, "Channel Fetched ", channel[0]));
+});
+
+const getWatchHistory = asyncHandler(async (req, res, next) => {
+  const user = req.user;
+  if (!user) throw new ApiError("Please Login First!", "401");
+  const watchHistory = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    fullname: 1,
+                    avatar: 1,
+                    _id: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+    {
+      $project: {
+        watchHistory: 1,
+      },
+    },
+  ]);
+
+  return res.status(200).json(new ApiRes(200, "History fetched", watchHistory[0]));
 });
 
 export {
@@ -295,5 +407,7 @@ export {
   getCurrentUserdata,
   updateAccountData,
   updateAvatar,
-  updateCoverImage
+  updateCoverImage,
+  getUserChannelDetails,
+  getWatchHistory
 };
