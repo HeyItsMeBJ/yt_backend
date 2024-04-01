@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAllUsers,
   getCurrentUserdata,
   getUserChannelDetails,
   getWatchHistory,
@@ -55,5 +56,8 @@ userrouter.get(
   getUserChannelDetails
 );
 userrouter.get("/get-watch-history", jwtVerify, getWatchHistory);
+
+// this for testing the pagination concept
+userrouter.get("/get-all-users",getAllUsers)
 
 export { userrouter };

@@ -76,8 +76,7 @@ const register = asyncHandler(async (req, res, next) => {
 const login = asyncHandler(async (req, res, next) => {
   //get user input frontend
   const { username, email, password } = req.body;
-  if (!username && !email)
-    throw new ApiError("All fields are required.", 400);
+  if (!username && !email) throw new ApiError("All fields are required.", 400);
 
   //get user from db
   const userdata = await User.findOne({
@@ -193,13 +192,13 @@ const updatePassword = asyncHandler(async (req, res, next) => {
   // take old new pass
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword)
-    throw new ApiError("please provide all fields",400);
+    throw new ApiError("please provide all fields", 400);
 
   // find the user and check password
   const user = await User.findById(req.user._id);
-  if (!user) throw new ApiError( "server error",500);
+  if (!user) throw new ApiError("server error", 500);
   const isMatched = await user.isPasswordCorrect(oldPassword);
-  if (!isMatched) throw new ApiError("Wrong Password",401);
+  if (!isMatched) throw new ApiError("Wrong Password", 401);
 
   // update pass
   user.password = newPassword;
@@ -217,7 +216,7 @@ const updateAccountData = asyncHandler(async (req, res, next) => {
   //get input data
   const { fullname, email } = req.body;
   if (!fullname && !email)
-    throw new ApiError("Please provide at least one field to update",400);
+    throw new ApiError("Please provide at least one field to update", 400);
 
   //update data in DB
   const user = await User.findByIdAndUpdate(
@@ -234,16 +233,16 @@ const updateAccountData = asyncHandler(async (req, res, next) => {
 const updateAvatar = asyncHandler(async (req, res, next) => {
   // get avatar
   const avatar = req.file;
-  
-  if (!avatar) throw new ApiError("Input the avatar",400);
+
+  if (!avatar) throw new ApiError("Input the avatar", 400);
 
   // get local path
   const avatarpath = avatar.path;
-  if (!avatarpath) throw new ApiError("input the avatar",400);
-// console.log(avatarpath)
+  if (!avatarpath) throw new ApiError("input the avatar", 400);
+  // console.log(avatarpath)
   // upload on cloudinary
   const uploadAvatar = await uploadCloudinaryFile(avatarpath);
-  if (!uploadAvatar) throw new ApiError( "server error: upload problem",500);
+  if (!uploadAvatar) throw new ApiError("server error: upload problem", 500);
 
   // get user and update avatar url on db
   const user = await User.findByIdAndUpdate(
@@ -253,7 +252,7 @@ const updateAvatar = asyncHandler(async (req, res, next) => {
   ).select("-password -refreshToken");
   if (!user) {
     fs.unlinkSync(avatarpath);
-    throw new ApiError("Server Error: User not get",500);
+    throw new ApiError("Server Error: User not get", 500);
   }
 
   // res
@@ -263,16 +262,16 @@ const updateAvatar = asyncHandler(async (req, res, next) => {
 const updateCoverImage = asyncHandler(async (req, res, next) => {
   // get coverImage
   const coverImage = req.file;
-  if (!coverImage) throw new ApiError( "Input the coverImage",400);
+  if (!coverImage) throw new ApiError("Input the coverImage", 400);
 
   // get local path
   const coverImagepath = coverImage.path;
-  if (!coverImagepath) throw new ApiError( "input the coverImage",400);
+  if (!coverImagepath) throw new ApiError("input the coverImage", 400);
 
   // upload on cloudinary
   const uploadCoverImage = await uploadCloudinaryFile(coverImagepath);
   if (!uploadCoverImage)
-    throw new ApiError( "server error: upload problem",500);
+    throw new ApiError("server error: upload problem", 500);
 
   // get user and update coverImage url on db
   const user = await User.findByIdAndUpdate(
@@ -282,7 +281,7 @@ const updateCoverImage = asyncHandler(async (req, res, next) => {
   ).select("-password -refreshToken");
   if (!user) {
     fs.unlinkSync(coverImagepath);
-    throw new ApiError( "Server Error: User not get",500);
+    throw new ApiError("Server Error: User not get", 500);
   }
 
   // res
@@ -291,7 +290,7 @@ const updateCoverImage = asyncHandler(async (req, res, next) => {
 
 const getUserChannelDetails = asyncHandler(async (req, res, next) => {
   const { username } = req.params;
- 
+
   if (!username) throw new ApiError("Please provide username", 400);
 
   const channel = await User.aggregate([
@@ -395,7 +394,39 @@ const getWatchHistory = asyncHandler(async (req, res, next) => {
     },
   ]);
 
-  return res.status(200).json(new ApiRes(200, "History fetched", watchHistory[0]));
+  return res
+    .status(200)
+    .json(new ApiRes(200, "History fetched", watchHistory[0]));
+});
+
+
+// testing pagination
+const getAllUsers = asyncHandler(async (req, res, next) => {
+  const page = Number(req.query.page);
+  const limit = Number(req.query.limit);
+
+  const users = await User.aggregate([
+    {
+      $project: {
+        _id: 1,
+        username: 1,
+        email: 1,
+        fullname: 1,
+      },
+    },
+  ]);
+
+  const options = {
+    page: page || 1,
+    limit: limit || 2,
+  };
+  const resultUsers = await User.aggregatePaginate(users, options);
+
+  // console.log(resultUsers);
+
+  return res.status(200).json(
+    new ApiRes(200, "all users fetched", resultUsers)
+  );
 });
 
 export {
@@ -409,5 +440,6 @@ export {
   updateAvatar,
   updateCoverImage,
   getUserChannelDetails,
-  getWatchHistory
+  getWatchHistory,
+  getAllUsers,
 };
