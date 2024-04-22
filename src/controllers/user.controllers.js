@@ -1,7 +1,7 @@
 import { User } from "../models/user.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import uploadCloudinaryFile from "../utils/cloudinary.js";
+import {uploadCloudinaryFile} from "../utils/cloudinary.js";
 import { ApiRes } from "../utils/ApiRes.js";
 import fs from "fs";
 import jwt from "jsonwebtoken";

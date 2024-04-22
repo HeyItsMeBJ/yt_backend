@@ -13,17 +13,14 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-
-
-
-
-
-
-
 // routes
+
+//user
 import { userrouter } from "./routes/user.routes.js";
-app.use('/user',userrouter)
+app.use("/user", userrouter);
 
-
+//video
+import { videorouter } from "./routes/video.routes.js";
+app.use("/video", videorouter);
 
 export { app };
