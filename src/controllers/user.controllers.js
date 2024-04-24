@@ -317,7 +317,7 @@ const getUserChannelDetails = asyncHandler(async (req, res, next) => {
         subscribedToCount: { $size: "$subscribedTo" },
         isSubscribed: {
           $cond: {
-            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            if: { $in: [new mongoose.Types.ObjectId(req.user?._id), "$subscribers.subscriber"] },
             then: true,
             else: false,
           },
