@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { upload } from "../middlewares/multer.middlewares";
+import { upload } from "../middlewares/multer.middlewares.js";
 import {
   deleteVideo,
   getVideoById,
   publishVideo,
   updateVideo,
-} from "../controllers/video.controller";
-import { jwtVerify } from "../middlewares/verifyLoginJWT";
+} from "../controllers/video.controller.js";
+import { jwtVerify } from "../middlewares/verifyLoginJWT.js";
 
 const videorouter = Router();
 
@@ -15,11 +15,11 @@ videorouter.route("/").post(
   upload.fields(
     [
       {
-        name: videoFile,
+        name: "videoFile",
         maxCount: 1,
       },
       {
-        name: thumbnail,
+        name: "thumbnail",
         maxCount: 1,
       },
     ],

@@ -1,22 +1,21 @@
-import { ApiError } from "../utils/ApiError";
-import { asyncHandler } from "../utils/asyncHandler";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import fs from "fs";
 import {
   deleteCloudinaryFile,
   uploadCloudinaryFile,
-} from "../utils/cloudinary";
-import { Video } from "../models/video.models";
-import { ApiRes } from "../utils/ApiRes";
+} from "../utils/cloudinary.js";
+import { Video } from "../models/video.models.js";
+import { ApiRes } from "../utils/ApiRes.js";
 import mongoose from "mongoose";
-import { hasSubscribers } from "diagnostics_channel";
 import { extractPublicId } from "cloudinary-build-url";
 
-// const getAllVideos = asyncHandler(async (req, res, next) => {
-//   const { page = 1, limit = 10, userId, query, shortBy, shortType } = req.query;
+const getAllVideos = asyncHandler(async (req, res, next) => {
+  const { page = 1, limit = 10, userId, query, shortBy, shortType } = req.query;
 
-//   page = Number(page);
-//   limit = Number(limit);
-// });
+  page = Number(page);
+  limit = Number(limit);
+});
 
 const publishVideo = asyncHandler(async (req, res) => {
   const { title, discription } = req.body;
